@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STEM+C 思维能力五维评估</title>
+    <!-- 引入雷达图插件 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .title {
+            text-align: center;
+            color: #2E86AB;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .dimension {
+            color: #444;
+            margin: 10px 0;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .question {
+            font-size: 18px;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+        .options {
+            margin: 20px 0;
+        }
+        .option {
+            margin: 12px 0;
+            font-size: 16px;
+        }
+        .btn {
+            background: #2E86AB;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #236a8b;
+        }
+        /* 结果区域样式 */
+        .result-box {
+            display: none;
+        }
+        .chart-container {
+            width: 100%;
+            height: 400px;
+            margin: 20px 0;
+        }
+        .detail-report {
+            margin-top: 30px;
+            line-height: 1.8;
+        }
+        .detail-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .detail-item h4 {
+            color: #2E86AB;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">物理计算与计算思维能力评估</h1>
+
+        <!-- 答题区域 -->
+        <div id="quizArea">
+            <div class="dimension" id="dimText"></div>
+            <div class="question" id="queText"></div>
+            <div class="options" id="optArea"></div>
+            <button class="btn" onclick="nextStep()">下一题</button>
+        </div>
+
+        <!-- 结果+雷达图区域 -->
+        <div class="result-box" id="resultArea">
+            <h2 style="text-align:center; color:#2E86AB; margin-bottom:15px;">评估报告</h2>
+            <!-- 雷达图 -->
+            <div class="chart-container">
+                <canvas id="radarChart"></canvas>
+            </div>
+            <!-- 各维度详细评价 -->
+            <div class="detail-report" id="reportDetail"></div>
+        </div>
+    </div>
+
+    <script>
+        // 5大维度：基于论文核心能力
+        const dimNames = [
+            "研究目的与理论基础",
+            "技术工具与应用",
+            "教学方法与流程",
+            "数据收集与分析",
+            "研究结果与展望"
+        ];
+        
+        // 20道题，每题对应一个维度，选项带分值（0-10分）
+        const questions = [
+            // 维度0：研究目的与理论基础（4题）
+            {
+                dimIndex: 0,
+                title: "1. 本研究的核心目的是探索以下哪种方式在电子入门课程中对学生学习、动机及计算思维的提升作用？",
+                options: [
+                    { text: "A. 仅使用传统课堂教学", score: 3 },
+                    { text: "B. 移动设备支持的物理计算（PhyC）活动", score: 10 },
+                    { text: "C. 纯在线视频课程", score: 4 },
+                    { text: "D. 独立的数学建模训练", score: 5 }
+                ]
+            },
+            {
+                dimIndex: 0,
+                title: "2. 物理计算（PhyC）的核心特征是？",
+                options: [
+                    { text: "A. 纯软件算法模拟", score: 4 },
+                    { text: "B. 程序通过硬件（传感器/执行器）与环境交互", score: 10 },
+                    { text: "C. 仅关注理论推导", score: 3 },
+                    { text: "D. 独立于硬件的编程训练", score: 5 }
+                ]
+            },
+            {
+                dimIndex: 0,
+                title: "3. 研究的教学方法主要基于哪一学习理论？",
+                options: [
+                    { text: "A. 行为主义", score: 4 },
+                    { text: "B. 建构主义（“做中学”）", score: 10 },
+                    { text: "C. 认知主义", score: 5 },
+                    { text: "D. 人本主义", score: 3 }
+                ]
+            },
+            {
+                dimIndex: 0,
+                title: "4. 研究中提到的“计算学徒制”（CA）模型强调？",
+                options: [
+                    { text: "A. 仅专注于计算机科学课程", score: 3 },
+                    { text: "B. 将计算思维整合到学科学习中，发展适应性专长", score: 10 },
+                    { text: "C. 纯理论教学", score: 4 },
+                    { text: "D. 独立学习，无需协作", score: 5 }
+                ]
+            },
+            // 维度1：技术工具与应用（4题）
+            {
+                dimIndex: 1,
+                title: "5. 研究中专门为支持物理计算与块式编程开发的移动应用程序名称是？",
+                options: [
+                    { text: "A. Scratch Jr.", score: 4 },
+                    { text: "B. EmDroid", score: 10 },
+                    { text: "C. Arduino IDE", score: 5 },
+                    { text: "D. App Inventor", score: 3 }
+                ]
+            },
+            {
+                dimIndex: 1,
+                title: "6. EmDroid应用程序将块式编程最终翻译为哪种编程语言？",
+                options: [
+                    { text: "A. Python", score: 4 },
+                    { text: "B. Java", score: 3 },
+                    { text: "C. C语言", score: 10 },
+                    { text: "D. JavaScript", score: 5 }
+                ]
+            },
+            {
+                dimIndex: 1,
+                title: "7. 以下哪项不属于EmDroid的模块类别？",
+                options: [
+                    { text: "A. 延迟（Delays）", score: 4 },
+                    { text: "B. I/O引脚与端口", score: 5 },
+                    { text: "C. 机器学习（Machine Learning）", score: 10 },
+                    { text: "D. 传感器（Sensors）", score: 3 }
+                ]
+            },
+            {
+                dimIndex: 1,
+                title: "8. 研究中使用的开发板基于以下哪种微控制器？",
+                options: [
+                    { text: "A. STM32", score: 3 },
+                    { text: "B. ATmega328P", score: 10 },
+                    { text: "C. ESP32", score: 5 },
+                    { text: "D. Raspberry Pi", score: 4 }
+                ]
+            },
+            // 维度2：教学方法与流程（4题）
+            {
+                dimIndex: 2,
+                title: "9. 研究中课堂教学时间（每周3小时）的分配方式是？",
+                options: [
+                    { text: "A. 全部用于理论讲解", score: 3 },
+                    { text: "B. 1小时被动学习+2小时主动学习（做中学）", score: 10 },
+                    { text: "C. 2小时被动学习+1小时主动学习", score: 5 },
+                    { text: "D. 全部用于实验操作", score: 4 }
+                ]
+            },
+            {
+                dimIndex: 2,
+                title: "10. 主动学习阶段的核心活动是？",
+                options: [
+                    { text: "A. 观看教学视频", score: 4 },
+                    { text: "B. 通过物理计算任务进行实验、调试与反思", score: 10 },
+                    { text: "C. 背诵知识点", score: 3 },
+                    { text: "D. 完成书面作业", score: 5 }
+                ]
+            },
+            {
+                dimIndex: 2,
+                title: "11. 物理计算（PhyC）的教育基础主要源于？",
+                options: [
+                    { text: "A. 行为主义强化理论", score: 4 },
+                    { text: "B. 建构主义与Papert的“微世界”概念", score: 10 },
+                    { text: "C. 认知负荷理论", score: 5 },
+                    { text: "D. 社会学习理论", score: 3 }
+                ]
+            },
+            {
+                dimIndex: 2,
+                title: "12. 研究中“调试教学法”（DP）的核心观点是？",
+                options: [
+                    { text: "A. 错误是学习的机会，引导学生识别并修复错误", score: 10 },
+                    { text: "B. 错误必须避免，否则影响成绩", score: 3 },
+                    { text: "C. 调试仅需教师完成", score: 4 },
+                    { text: "D. 错误无需关注，继续前进", score: 5 }
+                ]
+            },
+            // 维度3：数据收集与分析（4题）
+            {
+                dimIndex: 3,
+                title: "13. 本研究数据收集的主要方法不包括以下哪项？",
+                options: [
+                    { text: "A. 学业成绩分析", score: 4 },
+                    { text: "B. 问卷调查（Likert量表）", score: 5 },
+                    { text: "C. 半结构化访谈", score: 3 },
+                    { text: "D. 脑电信号监测", score: 10 }
+                ]
+            },
+            {
+                dimIndex: 3,
+                title: "14. 问卷调查采用的量表等级是？",
+                options: [
+                    { text: "A. 1-3级（同意/中立/不同意）", score: 4 },
+                    { text: "B. 1-4级（强烈不同意-强烈同意）", score: 10 },
+                    { text: "C. 1-5级（非常不满意-非常满意）", score: 5 },
+                    { text: "D. 0-1级（是/否）", score: 3 }
+                ]
+            },
+            {
+                dimIndex: 3,
+                title: "15. 研究中用于分析学业成绩的非参数检验方法是？",
+                options: [
+                    { text: "A. t检验", score: 4 },
+                    { text: "B. Wilcoxon符号秩检验", score: 10 },
+                    { text: "C. 方差分析", score: 5 },
+                    { text: "D. 卡方检验", score: 3 }
+                ]
+            },
+            {
+                dimIndex: 3,
+                title: "16. 定性分析中通过什么方法识别 emergent themes（涌现主题）？",
+                options: [
+                    { text: "A. 仅统计频率", score: 3 },
+                    { text: "B. 开放式编码与主轴编码", score: 10 },
+                    { text: "C. 主观猜测", score: 4 },
+                    { text: "D. 仅参考已有理论", score: 5 }
+                ]
+            },
+            // 维度4：研究结果与展望（4题）
+            {
+                dimIndex: 4,
+                title: "17. 研究结果显示，学生学业成绩在干预后（第三学期TT）的整体变化趋势是？",
+                options: [
+                    { text: "A. 显著下降", score: 3 },
+                    { text: "B. 无明显变化", score: 4 },
+                    { text: "C. 显著提升", score: 10 },
+                    { text: "D. 完全持平", score: 5 }
+                ]
+            },
+            {
+                dimIndex: 4,
+                title: "18. 以下哪项是研究定性分析中确定的影响学习的关键因素？",
+                options: [
+                    { text: "A. 学习发展、情感参与、教师存在、技术可供性、PhyC交互与调试", score: 10 },
+                    { text: "B. 仅依赖学生自学能力", score: 3 },
+                    { text: "C. 硬件设备的价格", score: 4 },
+                    { text: "D. 教室的大小", score: 5 }
+                ]
+            },
+            {
+                dimIndex: 4,
+                title: "19. 以下哪项不属于本研究的局限性？",
+                options: [
+                    { text: "A. 样本量较小，难以广泛推广", score: 4 },
+                    { text: "B. 教师的教学风格可能影响结果", score: 5 },
+                    { text: "C. 样本量过大，数据处理困难", score: 10 },
+                    { text: "D. 仅针对特定院校与课程", score: 3 }
+                ]
+            },
+            {
+                dimIndex: 4,
+                title: "20. 研究的未来工作可能包括以下哪项？",
+                options: [
+                    { text: "A. 完全放弃移动设备，回归传统教学", score: 3 },
+                    { text: "B. 纳入更多CT组件、优化课程整合、探索长期效果", score: 10 },
+                    { text: "C. 停止物理计算活动", score: 4 },
+                    { text: "D. 仅保留理论教学", score: 5 }
+                ]
+            }
+        ];
+
+        // 全局变量
+        let currentQ = 0;
+        let dimScores = [0, 0, 0, 0, 0]; // 5个维度分数
+        let chartInstance = null;
+
+        // 显示题目
+        function showQuestion() {
+            const q = questions[currentQ];
+            document.getElementById("dimText").innerText = "【评估维度】" + dimNames[q.dimIndex];
+            document.getElementById("queText").innerText = q.title;
+            
+            let optHtml = "";
+            q.options.forEach((item, i) => {
+                optHtml += `
+                    <div class="option">
+                        <input type="radio" name="ans" value="${i}" required>
+                        ${item.text}
+                    </div>
+                `;
+            });
+            document.getElementById("optArea").innerHTML = optHtml;
+        }
+
+        // 下一题/计算结果
+        function nextStep() {
+            const radios = document.getElementsByName("ans");
+            let selIndex = -1;
+            radios.forEach((r, i) => { if(r.checked) selIndex = i; });
+            
+            if(selIndex === -1) {
+                alert("请选择一个选项！");
+                return;
+            }
+
+            // 记录当前维度分数
+            const q = questions[currentQ];
+            dimScores[q.dimIndex] += q.options[selIndex].score; // 累加维度分数
+
+            currentQ++;
+            if(currentQ >= questions.length) {
+                // 计算维度平均分（每个维度4题，总分40→归一化到0-10）
+                dimScores = dimScores.map(score => score / 4);
+                showFinalResult(); // 显示雷达图+报告
+            } else {
+                showQuestion();
+            }
+        }
+
+        // 绘制雷达图
+        function drawRadar() {
+            const ctx = document.getElementById("radarChart").getContext("2d");
+            if(chartInstance) chartInstance.destroy();
+            
+            chartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: dimNames,
+                    datasets: [{
+                        label: '你的能力得分（0-10分）',
+                        data: dimScores,
+                        backgroundColor: 'rgba(46, 134, 171, 0.2)',
+                        borderColor: 'rgba(46, 134, 171, 1)',
+                        pointBackgroundColor: '#2E86AB',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: { beginAtZero: true, max: 10 }
+                    }
+                }
+            });
+        }
+
+        // 生成各维度评价
+        function getDimAdvice(index, score) {
+            const name = dimNames[index];
+            let level, advice;
+            if(score >= 8) {
+                level = "优秀";
+                advice = "该维度能力突出，可继续深入探索相关项目与实验。";
+            } else if(score >= 5) {
+                level = "良好";
+                advice = "基础不错，可多练习相关内容提升熟练度。";
+            } else {
+                level = "待提升";
+                advice = "建议从基础入门，多观察、多动手、多练习逻辑。";
+            }
+            return { level, advice };
+        }
+
+        // 显示最终结果
+        function showFinalResult() {
+            document.getElementById("quizArea").style.display = "none";
+            document.getElementById("resultArea").style.display = "block";
+            drawRadar();
+
+            // 生成详细报告
+            let reportHtml = "";
+            dimScores.forEach((sc, i) => {
+                const res = getDimAdvice(i, sc);
+                reportHtml += `
+                    <div class="detail-item">
+                        <h4>${dimNames[i]}：${sc.toFixed(1)}分（${res.level}）</h4>
+                        <p>${res.advice}</p>
+                    </div>
+                `;
+            });
+            document.getElementById("reportDetail").innerHTML = reportHtml;
+        }
+
+        // 开始
+        window.onload = showQuestion;
+    </script>
+</body>
+</html>
